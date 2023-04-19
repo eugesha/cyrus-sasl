@@ -1,63 +1,151 @@
 # Makefile.am for the SASL plugins
+# Rob Siemborski
 # Rob Earhart
-# $Id: Makefile.am,v 1.4 1998/11/24 18:14:01 rob Exp $
+# $Id: Makefile.am,v 1.86 2011/09/05 14:18:10 murch Exp $
 #
+################################################################
+# Copyright (c) 2000 Carnegie Mellon University.  All rights reserved.
 #
-#         Copyright 1998 by Carnegie Mellon University
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
 #
-#                       All Rights Reserved
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer. 
 #
-# Permission to use, copy, modify, and distribute this software and its
-# documentation for any purpose and without fee is hereby granted,
-# provided that the above copyright notice appear in all copies and that
-# both that copyright notice and this permission notice appear in
-# supporting documentation, and that the name of CMU not be
-# used in advertising or publicity pertaining to distribution of the
-# software without specific, written prior permission.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
 #
-# CMU DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
-# ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL
-# CMU BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR
-# ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
-# WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
-# ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
-# SOFTWARE.
+# 3. The name "Carnegie Mellon University" must not be used to
+#    endorse or promote products derived from this software without
+#    prior written permission. For permission or any other legal
+#    details, please contact  
+#      Office of Technology Transfer
+#      Carnegie Mellon University
+#      5000 Forbes Avenue
+#      Pittsburgh, PA  15213-3890
+#      (412) 268-4387, fax: (412) 268-7395
+#      tech-transfer@andrew.cmu.edu
 #
+# 4. Redistributions of any form whatsoever must retain the following
+#    acknowledgment:
+#    "This product includes software developed by Computing Services
+#     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+#
+# CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+# THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+# AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+# FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+# AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+# OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+################################################################
 
 # Library version info - here at the top, for sanity
-plain_version = 1:0:0
-anonymous_version = 1:1:0
-kerberos4_version = 1:1:0
-crammd5_version = 1:0:0
-scrammd5_version = 1:0:0
-gssapiv2_version = 1:0:0
+# See <http://www.gnu.org/software/libtool/manual/libtool.html#Versioning>
+# CURRENT:REVISION:AGE
+plugin_version = 3:0:0
 
-INCLUDES=-I$(top_srcdir)/include
+AM_CPPFLAGS=-DLIBSASL_EXPORTS=1 -I$(top_srcdir)/include -I$(top_srcdir)/lib -I$(top_srcdir)/sasldb -I$(top_srcdir)/common -I$(top_builddir)/include
+AM_LDFLAGS = -module -export-dynamic -rpath $(libdir) -version-info $(plugin_version) -no-undefined
 
-LDFLAGS = @LDFLAGS@ -export-dynamic -rpath $(plugindir)
+if BUILD_LIBOBJ
+COMPAT_OBJS = $(top_builddir)/lib/libobj.la
+endif
+PLUGIN_COMMON_OBJS = $(top_builddir)/common/libplugin_common.la
+CRYPTO_COMPAT_OBJS = $(top_builddir)/common/libcrypto_compat.la
+
+EXTRA_DIST = makeinit.sh NTMakefile
+noinst_SCRIPTS = makeinit.sh
+
+LIB_MYSQL = @LIB_MYSQL@
 
 plugindir = @plugindir@
+plugin_LTLIBRARIES = @SASL_MECHS@
 
-sasldir = $(prefix)/lib/sasl
-sasl_LTLIBRARIES = @SASL_MECHS@
-EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la libscrammd5.la libgssapiv2.la
+EXTRA_LTLIBRARIES = libplain.la libanonymous.la libkerberos4.la libcrammd5.la \
+	libgs2.la libgssapiv2.la libdigestmd5.la liblogin.la libsrp.la libotp.la \
+	libscram.la libntlm.la libpassdss.la libsasldb.la libsql.la libldapdb.la
 
-libplain_la_SOURCES = plain.c
-libplain_la_LDFLAGS = -version-info $(plain_version)
+libplain_la_SOURCES = plain.c plain_init.c
+libplain_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libplain_la_LIBADD = $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
 
-libanonymous_la_SOURCES = anonymous.c
-libanonymous_la_LDFLAGS = -version-info $(anonymous_version)
+libanonymous_la_SOURCES = anonymous.c anonymous_init.c
+libanonymous_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libanonymous_la_LIBADD = $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
 
-libkerberos4_la_SOURCES = kerberos4.c
-libkerberos4_la_LDFLAGS = -version-info $(kerberos4_version)
-libkerberos4_la_LIBADD = -lkrb -ldes
+libkerberos4_la_SOURCES = kerberos4.c kerberos4_init.c
+libkerberos4_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libkerberos4_la_LIBADD = $(SASL_KRB_LIB) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
 
-libgssapiv2_la_SOURCES = gssapi.c
-libgssapiv2_la_LDFLAGS = -version-info $(gssapiv2_version)
-libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS)
+libgs2_la_SOURCES = gs2.c gs2_init.c gs2_token.c gs2_token.h
+libgs2_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libgs2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
 
-libcrammd5_la_SOURCES = cram.c
-libcrammd5_la_LDFLAGS = -version-info $(crammd5_version)
+libgssapiv2_la_SOURCES = gssapi.c gssapiv2_init.c
+libgssapiv2_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libgssapiv2_la_LIBADD = $(GSSAPIBASE_LIBS) $(GSSAPI_LIBS) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
 
-libscrammd5_la_SOURCES = scram.c
-libscrammd5_la_LDFLAGS = -version-info $(scrammd5_version)
+libcrammd5_la_SOURCES = cram.c crammd5_init.c
+libcrammd5_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libcrammd5_la_LIBADD = $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+libdigestmd5_la_SOURCES = digestmd5.c digestmd5_init.c
+libdigestmd5_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libdigestmd5_la_LIBADD = $(LIB_DES) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+libscram_la_SOURCES = scram.c scram_init.c
+libscram_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libscram_la_LIBADD = $(SCRAM_LIBS) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+liblogin_la_SOURCES = login.c login_init.c
+liblogin_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+liblogin_la_LIBADD = $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+libsrp_la_SOURCES = srp.c srp_init.c
+libsrp_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS) $(CRYPTO_COMPAT_OBJS)
+libsrp_la_LIBADD = $(SRP_LIBS) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS) $(CRYPTO_COMPAT_OBJS)
+
+libotp_la_SOURCES = otp.c otp_init.c otp.h
+libotp_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libotp_la_LIBADD = $(OTP_LIBS) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+libntlm_la_SOURCES = ntlm.c ntlm_init.c
+libntlm_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS) $(CRYPTO_COMPAT_OBJS)
+libntlm_la_LIBADD = $(NTLM_LIBS) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS) $(CRYPTO_COMPAT_OBJS)
+
+libpassdss_la_SOURCES = passdss.c passdss_init.c
+libpassdss_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS) $(CRYPTO_COMPAT_OBJS)
+libpassdss_la_LIBADD = $(PASSDSS_LIBS) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS) $(CRYPTO_COMPAT_OBJS)
+
+# Auxprop Plugins
+libsasldb_la_SOURCES = sasldb.c sasldb_init.c
+libsasldb_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libsasldb_la_LIBADD = ../sasldb/$(SASL_DB_BACKEND) ../sasldb/allockey.lo $(SASL_DB_LIB) $(LIB_SOCKET) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+libldapdb_la_SOURCES = ldapdb.c ldapdb_init.c
+libldapdb_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libldapdb_la_LIBADD = $(LIB_LDAP) $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+libsql_la_SOURCES = sql.c sql_init.c
+libsql_la_LDFLAGS = $(LIB_MYSQL) $(LIB_PGSQL) $(LIB_SQLITE) $(LIB_SQLITE3) \
+	$(AM_LDFLAGS)
+libsql_la_DEPENDENCIES = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+libsql_la_LIBADD = $(COMPAT_OBJS) $(PLUGIN_COMMON_OBJS)
+
+
+# Instructions for making the _init files
+
+init_src=anonymous_init.c crammd5_init.c digestmd5_init.c scram_init.c gs2_init.c gssapiv2_init.c \
+kerberos4_init.c login_init.c plain_init.c srp_init.c otp_init.c ntlm_init.c \
+passdss_init.c sasldb_init.c sql_init.c ldapdb_init.c
+
+
+CLEANFILES=$(init_src)
+
+${init_src}: $(srcdir)/makeinit.sh
+	$(SHELL) $(srcdir)/makeinit.sh $@
